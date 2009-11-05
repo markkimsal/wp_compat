@@ -8,7 +8,7 @@ class Cgn_Template_Wp extends Cgn_Template {
 	public function Cgn_Template_Wp() {
 	}
 
-	public function parseTemplate($templateStyle = 'index') {
+	public function parseTemplate($templateStyle = '') {
 		global $wpdb;
 $wpdb = Cgn_Db_Connector::getHandle();
 wp();
@@ -38,12 +38,16 @@ wp();
 
 		$templateIncluded = FALSE;
 		if ($templateStyle=='' || $templateStyle=='index') {
-			if(@include( $baseDir. $templateName.'/index.php')) {
+			if(include( $baseDir. $templateName.'/index.php')) {
 				$templateIncluded = TRUE;
 			}
+			if(!$templateIncluded && include( $baseDir. $templateName.'/index.html.php')) {
+				$templateIncluded = TRUE;
+			}
+
 		} else {
 			//try special style, if not fall back to index
-			if (!include( $baseDir. $templateName.'/'.$templateStyle.'.php') ) {
+			if (!include( $baseDir. $templateName.'/'.$templateStyle.'.php')) { // && !include( $baseDir. $templateName.'/'.$templateStyle.'.html.php') ) {
 				//eat the error
 				//failed include
 				$e = Cgn_ErrorStack::pullError('php');
@@ -51,7 +55,7 @@ wp();
 				$e = Cgn_ErrorStack::pullError('php');
 
 				//try WP named files first
-				if(!$templateIncluded && include( $baseDir. $templateName.'/index.php')) {
+				if(!$templateIncluded && @include( $baseDir. $templateName.'/index.php')) {
 					$templateIncluded = TRUE;
 				}
 
@@ -110,6 +114,14 @@ if (!function_exists('get_sidebar')) {
 		return true;
 	}
 }
+if (!function_exists('comments_template')) {
+	function comments_template() {
+		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
+		$obj->parseTemplate('comments');
+		return true;
+	}
+}
+
 if (!function_exists('get_footer')) {
 	function get_footer() {
 
@@ -136,9 +148,17 @@ if (!function_exists('bloginfo')) {
 		if ($key === 'stylesheet_url') {
 			echo $templateUrl.'style.css';
 		}
+		if ($key === 'stylesheet_directory') {
+			echo $templateUrl;
+		}
+
 
 		if ($key === 'url') {
 			echo substr(cgn_url(), 0, -1);
+		}
+
+		if ($key === 'template_url') {
+			echo substr(cgn_templateurl(), 0, -1);
 		}
 		if ($key === 'name') {
 			echo Cgn_Template::siteName();
@@ -151,6 +171,13 @@ if (!function_exists('bloginfo')) {
 	}
 
 }
+if (!function_exists('pings_open')) {
+	function pings_open() {
+		return false;
+		return true;
+	}
+}
+
 if (!function_exists('is_home')) {
 	function is_home() {
 		return false;
@@ -341,8 +368,43 @@ if (!function_exists('get_locale')) {
 	}
 }
 if (!function_exists('wp_list_pages')) {
-	function wp_list_pages() {
-		return 'en_US';
+	function wp_list_pages($args) {
+
+		$defaults = array(
+		'depth' => 0, 'show_date' => '',
+		'date_format' => get_option('date_format'),
+		'child_of' => 0, 'exclude' => '',
+		'title_li' => __('Pages'), 'echo' => 1,
+		'authors' => '', 'sort_column' => 'menu_order, post_title'
+		);
+
+		$myargs = array();
+		parse_str($args, $myargs);
+
+		$r = array_merge($myargs, $defaults);
+		$output = '';
+
+		$finder = new Cgn_DataItem('cgn_web_publish');
+		$finder->_cols = array('title', 'link_text');
+//		$finder->orderBy($r['sort_column']);
+//		$finder->echoSelect();
+		$pages = $finder->findAsArray();
+//		var_dump($pages);
+		if (!empty($pages)) {
+			if ( $r['title_li'] )
+				$output .= '<li class="pagenav">' . $r['title_li'] . '<ul>';
+
+
+			foreach ($pages as $p) {
+				$output .= '<li class="page_item"><a href="'.cgn_appurl('main','page').$p['link_text'].'">'.$p['title'].'</a></li>';
+			}
+
+			if ( $r['title_li'] )
+				$output .= '</ul></li>';
+		}
+		echo $output;
+//		return $output;
+//		return 'en_US';
 	}
 }
 
@@ -512,7 +574,7 @@ if (!function_exists('wp_footer')) {
 
 if (!function_exists('is_single')) {
 	function is_single() {
-		return true;
+//		return true;
 		return false;
 	}
 }
@@ -559,6 +621,12 @@ if (!function_exists('the_time')) {
 		echo date('m-d-Y', $post['posted_on']);
 	}
 }
+if (!function_exists('the_modified_time')) {
+	function the_modified_time($id=0) {
+		global $post;
+		echo date('m-d-Y', $post['posted_on']);
+	}
+}
 
 if (!function_exists('edit_post_link')) {
 	function edit_post_link($id=0) {
@@ -571,6 +639,11 @@ if (!function_exists('comments_popup_link')) {
 	function comments_popup_link($id=0) {
 		global $post;
 		return $post['posted_on'];
+	}
+}
+if (!function_exists('comments_open')) {
+	function comments_open() {
+		return true;
 	}
 }
 
