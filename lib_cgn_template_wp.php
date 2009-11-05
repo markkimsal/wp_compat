@@ -470,10 +470,40 @@ $postcache = array();
 global $post, $postcache;
 
 if (!function_exists('get_posts')) {
+	/**
+	 * This function loads one or many blog posts
+	 * OR one page
+	 */
 	function get_posts() {
 		global $postcache;
 		global  $wp_query, $wp_the_query;
-		$finder = new Cgn_DataItem('cgn_blog_entry_publish');
+
+		$req = Cgn_SystemRequest::getCurrentRequest();
+		$isPage = FALSE;
+		if ($req->mse == '') {
+			$isSingle = FALSE;
+		} else
+		if ($req->mse == 'main.page') {
+			$isPage = TRUE;
+		} else
+		if ($req->mse == 'blog') {
+			$isSingle   = FALSE;
+			$canComment = TRUE;
+		} else
+		if ($req->mse == 'blog.entry') {
+			$isSingle   = TRUE;
+			$canComment = TRUE;
+		} else {
+			$isSingle = TRUE;
+		}
+
+		if ($isPage) {
+			$finder = new Cgn_DataItem('cgn_web_publish');
+			$finder->andWhere('link_text', $req->cleanString(0));
+		} else {
+			$finder = new Cgn_DataItem('cgn_blog_entry_publish');
+		}
+
 		$postcache = $finder->findAsArray();
 		$wp_the_query->post_count = count($postcache);
 		return $postcache;
@@ -657,13 +687,13 @@ if (!function_exists('the_content')) {
 if (!function_exists('the_time')) {
 	function the_time($id=0) {
 		global $post;
-		echo date('m-d-Y', $post['posted_on']);
+		echo date('m-d-Y', $post['published_on']);
 	}
 }
 if (!function_exists('the_modified_time')) {
 	function the_modified_time($id=0) {
 		global $post;
-		echo date('m-d-Y', $post['posted_on']);
+		echo date('m-d-Y', $post['published_on']);
 	}
 }
 
@@ -763,8 +793,11 @@ $wp_the_query = $GLOBALS['wp_query'];
 //$GLOBALS['wp'] = $wp;
 
 function wp($query_vars = '') {
+	static $once = FALSE;
 	global  $wp_query, $wp_the_query;
 
+	if ($once) return;
+	$once = true;
 	get_posts();
 //	$wp_the_query->query('');
 	/*
