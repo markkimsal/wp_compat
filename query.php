@@ -129,11 +129,13 @@ function is_feed () {
 	return $wp_query->is_feed;
 }
 
+/*
 function is_home () {
 	global $wp_query;
 
 	return $wp_query->is_home;
 }
+ */
 
 function is_month () {
 	global $wp_query;
@@ -195,6 +197,7 @@ function is_search () {
 	return $wp_query->is_search;
 }
 
+/*
 function is_single ($post = '') {
 	global $wp_query;
 
@@ -215,6 +218,7 @@ function is_single ($post = '') {
 
 	return false;
 }
+ */
 
 function is_singular() {
 	global $wp_query;
@@ -250,6 +254,7 @@ function is_404 () {
  * The Loop.  Post loop control.
  */
 
+/*
 function have_posts() {
 	global $wp_query;
 
@@ -273,6 +278,7 @@ function the_post() {
 
 	$wp_query->the_post();
 }
+ */
 
 /*
  * Comments loop.
@@ -702,8 +708,10 @@ class WP_Query {
 		if ('404' == $qv['error'])
 			$this->set_404();
 
+		/*
 		if ( !empty($query) )
 			do_action_ref_array('parse_query', array(&$this));
+		 */
 	}
 
 	function set_404() {
@@ -1341,7 +1349,7 @@ class WP_Query {
 		if ($this->current_post + 1 < $this->post_count) {
 			return true;
 		} elseif ($this->current_post + 1 == $this->post_count) {
-			do_action('loop_end');
+//			do_action('loop_end');
 			// Do some cleaning up after the loop
 			$this->rewind_posts();
 		}
@@ -1491,6 +1499,7 @@ function wp_old_slug_redirect () {
 //
 
 // Setup global post data.
+/*
 function setup_postdata($post) {
 	global $id, $postdata, $authordata, $day, $currentmonth, $page, $pages, $multipage, $more, $numpages, $wp_query;
 	global $pagenow;
@@ -1523,5 +1532,6 @@ function setup_postdata($post) {
 	}
 	return true;
 }
+ */
 
 ?>
