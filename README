@@ -1,0 +1,8 @@
+This module provides wordpress theme compatibility to cognifty
+
+To install, change your boot/local/template.ini to use this 
+output handler
+
+
+[object]
+handler.output=@sys.path@/local-modules/wp_compat/lib_cgn_template_wp.php:Cgn_Template_Wp:defaultOutputHandler
