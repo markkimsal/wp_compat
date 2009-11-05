@@ -5,10 +5,29 @@ Cgn::loadLibrary("lib_cgn_template");
 class Cgn_Template_Wp extends Cgn_Template {
 
 
+	public $isSingle = FALSE;
+	public $canComment = FALSE;
+
 	public function Cgn_Template_Wp() {
 	}
 
 	public function parseTemplate($templateStyle = '') {
+		$req = Cgn_SystemRequest::getCurrentRequest();
+		if ($req->mse == '') {
+			$this->isSingle = FALSE;
+		} else
+		if ($req->mse == 'blog') {
+			$this->isSingle   = FALSE;
+			$this->canComment = TRUE;
+		} else
+		if ($req->mse == 'blog.entry') {
+			$this->isSingle   = TRUE;
+			$this->canComment = TRUE;
+		} else {
+			$this->isSingle = TRUE;
+		}
+
+
 		global $wpdb;
 $wpdb = Cgn_Db_Connector::getHandle();
 wp();
@@ -36,6 +55,9 @@ wp();
 		//Get the current user into the scope of the upcoming template include.
 		$u =& $req->getUser();
 
+		if ($this->isSingle && $templateStyle == '') {
+			$templateStyle = 'page';
+		}
 		$templateIncluded = FALSE;
 		if ($templateStyle=='' || $templateStyle=='index') {
 			if(include( $baseDir. $templateName.'/index.php')) {
@@ -131,7 +153,10 @@ if (!function_exists('get_footer')) {
 	}
 }
 if (!function_exists('dynamic_sidebar')) {
-	function dynamic_sidebar() {
+	function dynamic_sidebar($position) {
+		if($position == 'west_sidebar') {
+			return true;
+		}
 		return false;
 	}
 }
@@ -391,16 +416,16 @@ if (!function_exists('wp_list_pages')) {
 		$pages = $finder->findAsArray();
 //		var_dump($pages);
 		if (!empty($pages)) {
-			if ( $r['title_li'] )
-				$output .= '<li class="pagenav">' . $r['title_li'] . '<ul>';
+//			if ( $r['title_li'] )
+//				$output .= '<li class="pagenav">' . $r['title_li'] . '<ul>';
 
 
 			foreach ($pages as $p) {
 				$output .= '<li class="page_item"><a href="'.cgn_appurl('main','page').$p['link_text'].'">'.$p['title'].'</a></li>';
 			}
 
-			if ( $r['title_li'] )
-				$output .= '</ul></li>';
+//			if ( $r['title_li'] )
+//				$output .= '</ul></li>';
 		}
 		echo $output;
 //		return $output;
@@ -536,13 +561,27 @@ if (!function_exists('update_post_caches')) {
 }
 if (!function_exists('wp_tag_cloud')) {
 	function wp_tag_cloud() {
-		return false;
+		$output = '<ul>';
+		$finder = new Cgn_DataItem('cgn_blog_entry_tag');
+		$res = $finder->find();
+		foreach ($res as $_r) {
+			$output .= '<li><a href="'.cgn_appurl('blog', 'entry', 'tag').$_r->get('link_text').'">'.$_r->get('name').'</a></li> ';
+		}
+		$output .= '</ul>';
+		echo $output;
 	}
 }
 
 if (!function_exists('wp_list_cats')) {
 	function wp_list_cats() {
-		return false;
+		$output = '<ul>';
+		$finder = new Cgn_DataItem('cgn_blog_entry_tag');
+		$res = $finder->find();
+		foreach ($res as $_r) {
+			$output .= '<li><a href="'.cgn_appurl('blog', 'entry', 'tag').$_r->get('link_text').'">'.$_r->get('name').'</a></li> ';
+		}
+		$output .= '</ul>';
+		echo $output;
 	}
 }
 if (!function_exists('wp_list_bookmarks')) {
@@ -581,7 +620,7 @@ if (!function_exists('is_single')) {
 
 if (!function_exists('get_permalink')) {
 	function get_permalink($id=0) {
-		global $currentPost, $post;
+		global $post;
 		$entry = $post;
 		if (empty($entry)) {
 			$entry = get_post($id);
@@ -650,7 +689,12 @@ if (!function_exists('comments_open')) {
 
 if (!function_exists('the_permalink')) {
 	function the_permalink($id=0) {
-		return '#';
+		global $post;
+		$entry = $post;
+		if (empty($entry)) {
+			$entry = get_post($id);
+		}
+		echo cgn_appurl('blog','entry'). sprintf('%03d',$entry['cgn_blog_id']).'/'.date('Y',$entry['posted_on']).'/'.date('m',$entry['posted_on']).'/'.$entry['link_text'].'_'.sprintf('%05d',$entry['cgn_blog_entry_publish_id']).'.html';
 	}
 }
 
