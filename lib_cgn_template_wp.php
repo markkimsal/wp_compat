@@ -38,7 +38,7 @@ wp();
 
 		$templateIncluded = FALSE;
 		if ($templateStyle=='' || $templateStyle=='index') {
-			if(@include( $baseDir. $templateName.'/index.html.php')) {
+			if(@include( $baseDir. $templateName.'/index.php')) {
 				$templateIncluded = TRUE;
 			}
 		} else {
@@ -65,7 +65,7 @@ wp();
 		}
 		if (!$templateIncluded) {
 			$errors = array();
-			$errors[] = 'Cannot include template.';
+			$errors[] = 'Cannot include template. ';
 			echo $this->doShowMessage($errors);
 		}
 
@@ -138,7 +138,7 @@ if (!function_exists('bloginfo')) {
 		}
 
 		if ($key === 'url') {
-			echo cgn_url();
+			echo substr(cgn_url(), 0, -1);
 		}
 		if ($key === 'name') {
 			echo Cgn_Template::siteName();
@@ -394,6 +394,18 @@ if (!function_exists('get_posts')) {
 	}
 }
 
+if (!function_exists('get_post')) {
+	function get_post($id, $output, $filter) {
+		global $postcache;
+		reset($postcache);
+		$p = current($postcache);
+		reset($postcache);
+		return $p;
+
+		return false;
+	}
+}
+
 if (!function_exists('have_posts')) {
 	function have_posts() {
 		global $wp_query;
@@ -510,7 +522,13 @@ if (!function_exists('is_single')) {
 
 if (!function_exists('get_permalink')) {
 	function get_permalink($id=0) {
-		global $currentPost;
+		global $currentPost, $post;
+		$entry = $post;
+		if (empty($entry)) {
+			$entry = get_post($id);
+		}
+
+		return cgn_appurl('blog','entry'). sprintf('%03d',$entry['cgn_blog_id']).'/'.date('Y',$entry['posted_on']).'/'.date('m',$entry['posted_on']).'/'.$entry['link_text'].'_'.sprintf('%05d',$entry['cgn_blog_entry_publish_id']).'.html';
 		return '#';
 	}
 }
@@ -564,7 +582,6 @@ if (!function_exists('comments_popup_link')) {
 
 if (!function_exists('the_permalink')) {
 	function the_permalink($id=0) {
-		global $currentPost;
 		return '#';
 	}
 }
