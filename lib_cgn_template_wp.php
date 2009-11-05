@@ -173,6 +173,18 @@ function get_settings($option) {
 }
 }
 
+/**
+ * Load a simple user object
+ */
+if ( !function_exists('get_userdata') ) :
+	function get_userdata( $user_id ) {
+		$finder = new Cgn_DataItem('cgn_user');
+		$finder->load($user_id);
+		return $finder;
+	}
+endif;
+
+
 if (!function_exists('get_option')) {
 	function get_option($setting) {
 		$alloptions = array();
@@ -353,8 +365,13 @@ if (!function_exists('get_row')) {
 	}
 }
  */
+$postcache = array();
 if (!function_exists('get_posts')) {
 	function get_posts() {
+		$finder = new Cgn_DataItem('cgn_blog_entry_publish');
+		global $postcache;
+		$postcache = $finder->findAsArray();
+		return $postcache;
 		return false;
 	}
 }
@@ -410,18 +427,71 @@ if (!function_exists('setup_postdata')) {
 	}
 }
 if (!function_exists('get_permalink')) {
-	function get_permalink() {
+	function get_permalink($id=0) {
 		global $currentPost;
 		return '#';
 	}
 }
 if (!function_exists('get_the_title')) {
-	function get_the_title() {
-		global $currentPost;
-		return 'get_the_title()';
+	function get_the_title($id=0) {
+		global $postcache;
+
+		if ($id == 0) {
+			$post = next($postcache);
+			reset($postcace);
+		} else {
+			$post = $postcache[$id];
+		}
+		return $post['title'];
 	}
 }
 
 global $wpdb;
 $wpdb = Cgn_Db_Connector::getHandle();
 
+
+//mysql2date
+if (!function_exists('mysql2date')) {
+function mysql2date($dateformatstring, $mysqlstring, $translate = true) {
+    global $wp_locale;
+    $m = $mysqlstring;
+    if ( empty($m) ) {
+        return false;
+    }
+    $i = mktime(
+        (int) substr( $m, 11, 2 ), (int) substr( $m, 14, 2 ), (int) substr( $m, 17, 2 ),
+        (int) substr( $m, 5, 2 ), (int) substr( $m, 8, 2 ), (int) substr( $m, 0, 4 )
+    );
+
+    if( 'U' == $dateformatstring )
+        return $i;
+
+    if ( -1 == $i || false == $i )
+        $i = 0;
+
+    if ( !empty($wp_locale->month) && !empty($wp_locale->weekday) && $translate ) {
+        $datemonth = $wp_locale->get_month(date('m', $i));
+        $datemonth_abbrev = $wp_locale->get_month_abbrev($datemonth);
+        $dateweekday = $wp_locale->get_weekday(date('w', $i));
+        $dateweekday_abbrev = $wp_locale->get_weekday_abbrev($dateweekday);
+        $datemeridiem = $wp_locale->get_meridiem(date('a', $i));
+        $datemeridiem_capital = $wp_locale->get_meridiem(date('A', $i));
+        $dateformatstring = ' '.$dateformatstring;
+        $dateformatstring = preg_replace("/([^\\\])D/", "\\1".backslashit($dateweekday_abbrev), $dateformatstring);
+        $dateformatstring = preg_replace("/([^\\\])F/", "\\1".backslashit($datemonth), $dateformatstring);
+        $dateformatstring = preg_replace("/([^\\\])l/", "\\1".backslashit($dateweekday), $dateformatstring);
+        $dateformatstring = preg_replace("/([^\\\])M/", "\\1".backslashit($datemonth_abbrev), $dateformatstring);
+        $dateformatstring = preg_replace("/([^\\\])a/", "\\1".backslashit($datemeridiem), $dateformatstring);
+        $dateformatstring = preg_replace("/([^\\\])A/", "\\1".backslashit($datemeridiem_capital), $dateformatstring);
+
+        $dateformatstring = substr($dateformatstring, 1, strlen($dateformatstring)-1);
+    }
+    $j = @date($dateformatstring, $i);
+    if ( !$j ) {
+    // for debug purposes
+    //  echo $i." ".$mysqlstring;
+    }
+    return $j;
+}
+
+}
