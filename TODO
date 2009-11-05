@@ -1,0 +1,2 @@
+1. Replace do_action with Cgn_Signal_Mgr::emit($action);
+

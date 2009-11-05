@@ -1,5 +1,10 @@
 <?php
 Cgn::loadLibrary("lib_cgn_template");
+include_once('query.php');
+include_once('plugin.php');
+unset($GLOBALS['wp_query']);
+$GLOBALS['wp_query'] =& new WP_Query();
+
 
 class Cgn_Template_Wp extends Cgn_Template {
 
@@ -102,6 +107,7 @@ if (!function_exists('get_header')) {
 if (!function_exists('have_posts')) {
 	function have_posts() {
 
+		return true;
 echo "have_posts";
 return false;
 	}
