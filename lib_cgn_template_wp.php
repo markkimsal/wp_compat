@@ -397,23 +397,18 @@ if (!function_exists('get_posts')) {
 if (!function_exists('get_post')) {
 	function get_post($id, $output, $filter) {
 		global $postcache;
-		reset($postcache);
-		$p = current($postcache);
-		reset($postcache);
+		$idx = array_keys($postcache);
+		$p = $postcache[ $idx[$id] ];
 		return $p;
-
 		return false;
 	}
 }
 
 if (!function_exists('have_posts')) {
 	function have_posts() {
-		global $wp_query;
 		global $postcache;
 		return (current($postcache) !== FALSE);
 		return true;
-		echo "have_posts";
-		return false;
 	}
 }
 
@@ -423,8 +418,9 @@ if (!function_exists('the_post')) {
 		global $wp_query, $wp_the_query;
 		global $post;
 		$wp_the_query->in_the_loop = true;
-		$post = next($postcache);
+		$post = current($postcache);
 		setup_postdata($post);
+		next($postcache);
 	}
 }
 if (!function_exists('the_ID')) {
@@ -441,7 +437,7 @@ if (!function_exists('setup_postdata')) {
 		global $id, $postdata, $authordata, $day, $currentmonth, $page, $pages, $multipage, $more, $numpages, $wp_query;
 		global $pagenow;
 
-		$id = (int) $post->ID;
+		$id = (int) $post['cgn_blog_entry_publish_id'];
 
 		$authordata = get_userdata($post->post_author);
 
@@ -516,6 +512,7 @@ if (!function_exists('wp_footer')) {
 
 if (!function_exists('is_single')) {
 	function is_single() {
+		return true;
 		return false;
 	}
 }
@@ -533,14 +530,12 @@ if (!function_exists('get_permalink')) {
 	}
 }
 if (!function_exists('get_the_title')) {
-	function get_the_title($id=0) {
-		global $postcache;
-
-		if ($id == 0) {
-			$post = next($postcache);
-			reset($postcace);
-		} else {
+	function get_the_title($postID=NULL) {
+		global $postcache, $id;
+		if ($post === NULL) {
 			$post = $postcache[$id];
+		} else {
+			$post = $postcache[$postID];
 		}
 		return $post['title'];
 	}
