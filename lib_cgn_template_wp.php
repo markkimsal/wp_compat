@@ -59,16 +59,16 @@ $wpstate = new WP_State();
 		}
 		$templateIncluded = FALSE;
 		if ($templateStyle=='' || $templateStyle=='index') {
-			if(include( $baseDir. $templateName.'/index.php')) {
+			if(@include( $baseDir. $templateName.'/index.php')) {
 				$templateIncluded = TRUE;
 			}
-			if(!$templateIncluded && include( $baseDir. $templateName.'/index.html.php')) {
+			if(!$templateIncluded && @include( $baseDir. $templateName.'/index.html.php')) {
 				$templateIncluded = TRUE;
 			}
 
 		} else {
 			//try special style, if not fall back to index
-			if (!include( $baseDir. $templateName.'/'.$templateStyle.'.php')) { // && !include( $baseDir. $templateName.'/'.$templateStyle.'.html.php') ) {
+			if (!@include( $baseDir. $templateName.'/'.$templateStyle.'.php')) { // && !include( $baseDir. $templateName.'/'.$templateStyle.'.html.php') ) {
 				//eat the error
 				//failed include
 				$e = Cgn_ErrorStack::pullError('php');
@@ -200,6 +200,9 @@ if (!function_exists('comments_template')) {
 	function comments_template() {
 		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
 		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
+		//this function needs $comments in scope
+		$t = Cgn_ObjectStore::getArray("template://variables/");
+		$comments = $t['commentList'];
 		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
 		$obj->parseTemplateFile($baseDir.$templateName.'/comments.php');
 		return true;
@@ -845,7 +848,11 @@ if (!function_exists('the_permalink')) {
 		if (empty($entry)) {
 			$entry = get_post($id);
 		}
-		echo cgn_appurl('blog','entry'). sprintf('%03d',$entry['cgn_blog_id']).'/'.date('Y',$entry['posted_on']).'/'.date('m',$entry['posted_on']).'/'.$entry['link_text'].'_'.sprintf('%05d',$entry['cgn_blog_entry_publish_id']).'.html';
+		if (isset($entry['posted_on'])) {
+			echo cgn_appurl('blog','entry'). sprintf('%03d',$entry['cgn_blog_id']).'/'.date('Y',$entry['posted_on']).'/'.date('m',$entry['posted_on']).'/'.$entry['link_text'].'_'.sprintf('%05d',$entry['cgn_blog_entry_publish_id']).'.html';
+		} else {
+			echo '';
+		}
 	}
 }
 
