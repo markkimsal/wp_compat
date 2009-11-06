@@ -480,6 +480,7 @@ if (!function_exists('get_posts')) {
 
 		$req = Cgn_SystemRequest::getCurrentRequest();
 		$isPage = FALSE;
+		$canComment = FALSE;
 		if ($req->mse == '') {
 			$isSingle = FALSE;
 		} else
@@ -493,6 +494,10 @@ if (!function_exists('get_posts')) {
 		if ($req->mse == 'blog.entry') {
 			$isSingle   = TRUE;
 			$canComment = TRUE;
+		} else 
+		if ($req->mse == 'blog.entry.tag') {
+			$isSingle   = FALSE;
+			$canComment = FALSE;
 		} else {
 			$isSingle = TRUE;
 		}
@@ -514,9 +519,14 @@ if (!function_exists('get_posts')) {
 if (!function_exists('get_post')) {
 	function get_post($id, $output, $filter) {
 		global $postcache;
-		$idx = array_keys($postcache);
-		$p = $postcache[ $idx[$id] ];
-		return $p;
+		global $post;
+		if ($post === NULL ) {
+			$idx = array_keys($postcache);
+			$p = $postcache[ $idx[$id] ];
+			return $p;
+		} else {
+			return $post;
+		}
 		return false;
 	}
 }
@@ -650,14 +660,19 @@ if (!function_exists('is_single')) {
 
 if (!function_exists('get_permalink')) {
 	function get_permalink($id=0) {
-		global $post;
+		global $postcache, $id;
+		if ($post === NULL) {
+			$post = $postcache[$id];
+		} else {
+			$post = $postcache[$postID];
+		}
+
 		$entry = $post;
 		if (empty($entry)) {
 			$entry = get_post($id);
 		}
 
 		return cgn_appurl('blog','entry'). sprintf('%03d',$entry['cgn_blog_id']).'/'.date('Y',$entry['posted_on']).'/'.date('m',$entry['posted_on']).'/'.$entry['link_text'].'_'.sprintf('%05d',$entry['cgn_blog_entry_publish_id']).'.html';
-		return '#';
 	}
 }
 if (!function_exists('get_the_title')) {
@@ -687,13 +702,19 @@ if (!function_exists('the_content')) {
 if (!function_exists('the_time')) {
 	function the_time($id=0) {
 		global $post;
-		echo date('m-d-Y', $post['published_on']);
+		if (isset($post['published_on']))
+			echo date('m-d-Y', $post['published_on']);
+		else
+			echo date('m-d-Y', $post['posted_on']);
 	}
 }
 if (!function_exists('the_modified_time')) {
 	function the_modified_time($id=0) {
 		global $post;
-		echo date('m-d-Y', $post['published_on']);
+		if (isset($post['published_on']))
+			echo date('m-d-Y', $post['published_on']);
+		else
+			echo date('m-d-Y', $post['posted_on']);
 	}
 }
 
@@ -711,7 +732,25 @@ if (!function_exists('comments_popup_link')) {
 	}
 }
 if (!function_exists('comments_open')) {
+	/**
+	 * Only allow comments on blog posts
+	 */
 	function comments_open() {
+		$req = Cgn_SystemRequest::getCurrentRequest();
+		$canComment = FALSE;
+		if ($req->mse == '') {
+		} else
+		if ($req->mse == 'main.page') {
+		} else
+		if ($req->mse == 'blog') {
+			$canComment = TRUE;
+		} else
+		if ($req->mse == 'blog.entry') {
+			$canComment = TRUE;
+		} else {
+		}
+		return $canComment;
+
 		return true;
 	}
 }
