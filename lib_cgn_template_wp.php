@@ -5,32 +5,31 @@ Cgn::loadLibrary("lib_cgn_template");
 class Cgn_Template_Wp extends Cgn_Template {
 
 
-	public $isSingle = FALSE;
-	public $canComment = FALSE;
-
 	public function Cgn_Template_Wp() {
 	}
 
 	public function parseTemplate($templateStyle = '') {
+		global $wpstate;
 		$req = Cgn_SystemRequest::getCurrentRequest();
 		if ($req->mse == '') {
-			$this->isSingle = FALSE;
+			$wpstate->isSingle = FALSE;
 		} else
 		if ($req->mse == 'blog') {
-			$this->isSingle   = FALSE;
-			$this->canComment = TRUE;
+			$wpstate->isSingle   = FALSE;
+			$wpstate->canComment = TRUE;
 		} else
 		if ($req->mse == 'blog.entry') {
-			$this->isSingle   = TRUE;
-			$this->canComment = TRUE;
+			$wpstate->isSingle   = TRUE;
+			$wpstate->canComment = TRUE;
 		} else {
-			$this->isSingle = TRUE;
+			$wpstate->isSingle = TRUE;
 		}
 
 
 		global $wpdb;
 $wpdb = Cgn_Db_Connector::getHandle();
-wp();
+//wp();
+$wpstate = new WP_State();
 
 		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
 		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
@@ -55,7 +54,7 @@ wp();
 		//Get the current user into the scope of the upcoming template include.
 		$u =& $req->getUser();
 
-		if ($this->isSingle && $templateStyle == '') {
+		if ($wpstate->isSingle && $templateStyle == '') {
 			$templateStyle = 'page';
 		}
 		$templateIncluded = FALSE;
@@ -122,33 +121,97 @@ wp();
 	}
 }
 
+/**
+ * Used to manage the state of the wordpress request.
+ */
+class WP_State {
+	/**
+	 * Show only a single post?
+	 */
+	public $isSingle   = FALSE;
+	/**
+	 * Show a page or article content from DB?
+	 */
+	public $isPage     = FALSE;
+	/**
+	 * Allow comments?
+	 */
+	public $canComment = FALSE;
+
+	/**
+	 * List of blog posts to show
+	 */
+	public $postcache = array();
+
+	public function __construct() {
+		$req = Cgn_SystemRequest::getCurrentRequest();
+		if ($req->mse == '') {
+			$this->isSingle = FALSE;
+		} else
+		if ($req->mse == 'main.page') {
+			$this->isPage = TRUE;
+		} else
+		if ($req->mse == 'blog') {
+			$this->isSingle   = FALSE;
+			$this->canComment = TRUE;
+		} else
+		if ($req->mse == 'blog.entry') {
+			$this->isSingle   = TRUE;
+			$this->canComment = TRUE;
+		} else 
+		if ($req->mse == 'blog.entry.tag') {
+			$this->isSingle   = FALSE;
+			$this->canComment = FALSE;
+		} else {
+			$this->isSingle = TRUE;
+		}
+
+		if ($this->isPage) {
+			$finder = new Cgn_DataItem('cgn_web_publish');
+			$finder->andWhere('link_text', $req->cleanString(0));
+		} else {
+			$finder = new Cgn_DataItem('cgn_blog_entry_publish');
+		}
+
+		$this->postcache = $finder->findAsArray();
+	}
+}
+
+global $wpstate;
+
 if (!function_exists('get_header')) {
 	function get_header() {
-
+		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
+		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
 		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
-		$obj->parseTemplate('header');
+		$obj->parseTemplateFile($baseDir.$templateName.'/header.php');
 	}
 }
 if (!function_exists('get_sidebar')) {
 	function get_sidebar() {
+		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
+		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
 		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
-		$obj->parseTemplate('sidebar');
+		$obj->parseTemplateFile($baseDir.$templateName.'/sidebar.php');
 		return true;
 	}
 }
 if (!function_exists('comments_template')) {
 	function comments_template() {
+		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
+		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
 		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
-		$obj->parseTemplate('comments');
+		$obj->parseTemplateFile($baseDir.$templateName.'/comments.php');
 		return true;
 	}
 }
 
 if (!function_exists('get_footer')) {
 	function get_footer() {
-
+		$templateName = Cgn_ObjectStore::getString("config://template/default/name");
+		$baseDir = Cgn_ObjectStore::getString("config://template/base/dir");
 		$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
-		$obj->parseTemplate('footer');
+		$obj->parseTemplateFile($baseDir.$templateName.'/footer.php');
 		return true;
 	}
 }
@@ -454,7 +517,7 @@ if (!function_exists('next_posts_link')) {
 
 
 if (!function_exists('__')) {
-	function __($word, $template) {
+	function __($word, $template=null) {
 		return $word;
 	}
 }
@@ -466,42 +529,45 @@ if (!function_exists('get_row')) {
 	}
 }
  */
-$postcache = array();
-global $post, $postcache;
+global $post;
 
 if (!function_exists('get_posts')) {
 	/**
 	 * This function loads one or many blog posts
 	 * OR one page
 	 */
-	function get_posts() {
-		global $postcache;
-		global  $wp_query, $wp_the_query;
+	function get_posts($args) {
+		global $wp_query, $wp_the_query, $wpstate;
 
 		$req = Cgn_SystemRequest::getCurrentRequest();
 		$isPage = FALSE;
 		$canComment = FALSE;
 		if ($req->mse == '') {
-			$isSingle = FALSE;
+			$wpstate->isSingle = FALSE;
 		} else
 		if ($req->mse == 'main.page') {
-			$isPage = TRUE;
+			$wpstate->isPage = TRUE;
 		} else
 		if ($req->mse == 'blog') {
-			$isSingle   = FALSE;
-			$canComment = TRUE;
+			$wpstate->isSingle   = FALSE;
+			$wpstate->canComment = TRUE;
 		} else
 		if ($req->mse == 'blog.entry') {
-			$isSingle   = TRUE;
-			$canComment = TRUE;
+			$wpstate->isSingle   = TRUE;
+			$wpstate->canComment = TRUE;
 		} else 
 		if ($req->mse == 'blog.entry.tag') {
-			$isSingle   = FALSE;
-			$canComment = FALSE;
+			$wpstate->isSingle   = FALSE;
+			$wpstate->canComment = FALSE;
 		} else {
-			$isSingle = TRUE;
+			$wpstate->isSingle = TRUE;
 		}
 
+
+//		$t = Cgn_ObjectStore::getArray("template://variables/");
+//		var_dump($args);
+//		exit();
+		/*
 		if ($isPage) {
 			$finder = new Cgn_DataItem('cgn_web_publish');
 			$finder->andWhere('link_text', $req->cleanString(0));
@@ -509,20 +575,20 @@ if (!function_exists('get_posts')) {
 			$finder = new Cgn_DataItem('cgn_blog_entry_publish');
 		}
 
-		$postcache = $finder->findAsArray();
-		$wp_the_query->post_count = count($postcache);
-		return $postcache;
+		$wpstate->postcache = $finder->findAsArray();
+		$wp_the_query->post_count = count($wpstate->postcache);
+		 */
+		return $wpstate->postcache;
 		return false;
 	}
 }
 
 if (!function_exists('get_post')) {
 	function get_post($id, $output, $filter) {
-		global $postcache;
-		global $post;
+		global $post, $wpstate;
 		if ($post === NULL ) {
-			$idx = array_keys($postcache);
-			$p = $postcache[ $idx[$id] ];
+			$idx = array_keys($wpstate->postcache);
+			$p = $wpstate->postcache[ $idx[$id] ];
 			return $p;
 		} else {
 			return $post;
@@ -533,29 +599,37 @@ if (!function_exists('get_post')) {
 
 if (!function_exists('have_posts')) {
 	function have_posts() {
-		global $postcache;
-		return (current($postcache) !== FALSE);
+		global $wpstate;
+		if ($wpstate->isSingle) {
+			if (!count($wpstate->postcache)) return true;
+		}
+
+		return (current($wpstate->postcache) !== FALSE);
 		return true;
 	}
 }
 
 if (!function_exists('the_post')) {
 	function the_post() {
-		global $postcache;
+		global $wpstate;
 		global $wp_query, $wp_the_query;
 		global $post;
+		if (!is_array($wpstate->postcache)) return;
+
 		$wp_the_query->in_the_loop = true;
-		$post = current($postcache);
+		$post = current($wpstate->postcache);
 		setup_postdata($post);
-		next($postcache);
+		next($wpstate->postcache);
 	}
 }
 if (!function_exists('the_ID')) {
 	function the_ID() {
-		global $postcache;
 		global $wp_query, $wp_the_query;
 		global $post;
-		return $post->cgn_blog_entry_publish_id;
+		if( isset($post['cgn_blog_entry_publish_id'])) {
+			return $post['cgn_blog_entry_publish_id'];
+		}
+		return 0;
 	}
 }
 
@@ -693,9 +767,17 @@ if (!function_exists('the_title')) {
 	}
 }
 if (!function_exists('the_content')) {
-	function the_content($readmore) {
+	function the_content($readmore='...') {
 		global $post;
-		echo $post['content'];
+		if (isset($post['content'])) {
+			echo $post['content'];
+		} else {
+
+			$obj = Cgn_ObjectStore::getObject('object://defaultOutputHandler');
+			$layout = Cgn_ObjectStore::getObject('object://defaultLayoutManager');
+			$layout->showMainContent('content.main', $obj);
+		}
+			//echo $post['content'];
 	}
 }
 
